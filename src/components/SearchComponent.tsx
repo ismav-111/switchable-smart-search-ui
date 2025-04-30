@@ -1,16 +1,11 @@
 
 import React, { useState } from 'react';
-import { Search, Expand, Minimize, ArrowRight, Filter, Save, HelpCircle, FileSpreadsheet } from 'lucide-react';
+import { Search, Expand, X, ArrowRight, Filter, Save, HelpCircle, FileSpreadsheet, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent } from '@/components/ui/card';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { cn } from '@/lib/utils';
 import { 
   DropdownMenu,
@@ -19,21 +14,41 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 interface SearchResult {
   id: string;
   title: string;
-  content: string;
+  status: string;
+  filed: string;
+  source: string;
+  url: string;
 }
 
 const SearchComponent: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [isAISearch, setIsAISearch] = useState<boolean>(false);
+  const [searchMode, setSearchMode] = useState<'standard' | 'ai'>('standard');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [aiResponse, setAIResponse] = useState<string>('');
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
-  const [expandedResults, setExpandedResults] = useState<Set<string>>(new Set());
-  const [searchMode, setSearchMode] = useState<'standard' | 'ai'>('standard');
+  const [filters, setFilters] = useState({
+    company: 'All Microsoft',
+    startYear: '',
+    endYear: '',
+    searchFields: {
+      all: true,
+      title: false,
+      abstract: false,
+      claims: false
+    }
+  });
 
   // Mock function to simulate search
   const handleSearch = () => {
@@ -42,245 +57,352 @@ const SearchComponent: React.FC = () => {
     if (searchMode === 'ai') {
       // Simulate AI search response
       setAIResponse(
-        `Memotech record not found for USPTO record with application number ${searchQuery}. 
-        
-        The search performed across multiple patent databases shows no matching records for this application number. This could be due to several factors:
-        
-        1. The application might be recent and not yet indexed in the Memotech system
-        2. There might be a formatting issue with the application number
-        3. The application might exist in a different patent office database
-        
-        Recommended actions:
-        - Verify the application number format (e.g., US-XXXXXXXX-A1)
-        - Try searching by other parameters such as inventor name or filing date
-        - Check if the application has been published yet`
+        `Memotech record not found for USPTO record with application number ${searchQuery}.`
       );
       setSearchResults([]);
     } else {
       // Simulate regular search results
       setSearchResults([
         {
-          id: '1',
+          id: '412254-1201',
           title: 'Method and system of providing access to documents stored in personal storage mediums',
-          content: 'Patent application related to document access systems in personal storage.'
+          status: 'Grant',
+          filed: '2022-06-15',
+          source: 'uspto.gov',
+          url: 'https://patents.uspto.gov/412254-1201'
         },
         {
-          id: '2',
+          id: '412255-1305',
           title: 'System for data processing with distributed databases',
-          content: 'Patent describing distributed database architecture for large-scale data processing.'
+          status: 'Published',
+          filed: '2021-08-22',
+          source: 'uspto.gov',
+          url: 'https://patents.uspto.gov/412255-1305'
         },
         {
-          id: '3',
+          id: '412256-1408',
           title: 'Method for secure authentication in networked systems',
-          content: 'Security patent focusing on authentication methods for enterprise networks.'
+          status: 'Grant',
+          filed: '2021-04-10',
+          source: 'uspto.gov',
+          url: 'https://patents.uspto.gov/412256-1408'
         }
       ]);
       setAIResponse('');
     }
   };
 
-  const toggleExpand = (id: string) => {
-    setExpandedResults(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(id)) {
-        newSet.delete(id);
-      } else {
-        newSet.add(id);
+  const clearFilters = () => {
+    setFilters({
+      company: 'All Microsoft',
+      startYear: '',
+      endYear: '',
+      searchFields: {
+        all: true,
+        title: false,
+        abstract: false,
+        claims: false
       }
-      return newSet;
     });
   };
 
+  const toggleSearchField = (field: 'all' | 'title' | 'abstract' | 'claims') => {
+    if (field === 'all') {
+      setFilters({
+        ...filters,
+        searchFields: {
+          all: true,
+          title: false,
+          abstract: false,
+          claims: false
+        }
+      });
+    } else {
+      setFilters({
+        ...filters,
+        searchFields: {
+          ...filters.searchFields,
+          all: false,
+          [field]: !filters.searchFields[field]
+        }
+      });
+    }
+  };
+
   return (
-    <div className="w-full max-w-5xl mx-auto px-4">
-      <Card className="border border-gray-200 shadow-md bg-white">
-        <CardHeader className="pb-2 border-b">
-          <CardTitle className="text-2xl font-bold text-center">Patent Search</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="flex flex-col gap-6">
-            {/* Search Input and Mode Selection */}
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col md:flex-row gap-4 items-center">
-                <div className="relative flex-1 w-full">
-                  <Input
-                    type="text"
-                    placeholder="Enter patent number, keyword, or inventor name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pr-10 w-full border-2 focus-visible:ring-1"
-                  />
-                  <Button 
-                    size="icon" 
-                    variant="ghost" 
-                    className="absolute right-0 top-0 h-full" 
-                    onClick={handleSearch}
-                  >
-                    <Search className="h-5 w-5" />
-                  </Button>
-                </div>
-                <Tabs 
-                  defaultValue={searchMode} 
-                  className="w-full md:w-auto"
-                  onValueChange={(value) => setSearchMode(value as 'standard' | 'ai')}
-                >
-                  <TabsList className="w-full grid grid-cols-2">
-                    <TabsTrigger value="standard">Standard Search</TabsTrigger>
-                    <TabsTrigger value="ai">AI Search</TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-              
-              {/* Quick Actions */}
-              <div className="flex flex-wrap gap-2">
+    <div className="w-full">
+      {/* Search Bar Section */}
+      <div className="bg-gray-50 p-4 rounded-lg shadow-sm mb-4">
+        <div className="flex flex-col gap-4">
+          {/* Search Input with Mode Toggle */}
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex items-center gap-2 flex-grow">
+              <span className="font-medium text-gray-700 whitespace-nowrap">Search :</span>
+              <div className="relative w-full">
+                <Input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pr-10 border-gray-300"
+                  placeholder="Enter patent number, keyword, or inventor name..."
+                />
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex items-center gap-1"
+                  size="icon" 
+                  variant="ghost" 
+                  className="absolute right-0 top-0 h-full" 
+                  onClick={handleSearch}
                 >
-                  <HelpCircle className="h-4 w-4" />
-                  <span>Help</span>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex items-center gap-1"
-                >
-                  <Save className="h-4 w-4" />
-                  <span>Save Query</span>
-                </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="flex items-center gap-1"
-                    >
-                      <Filter className="h-4 w-4" />
-                      <span>Filters</span>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56">
-                    <DropdownMenuGroup>
-                      <DropdownMenuItem>All Microsoft</DropdownMenuItem>
-                      <DropdownMenuItem>Filing Start Year</DropdownMenuItem>
-                      <DropdownMenuItem>Filing End Year</DropdownMenuItem>
-                    </DropdownMenuGroup>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="flex items-center gap-1"
-                >
-                  <FileSpreadsheet className="h-4 w-4" />
-                  <span>Export</span>
+                  <Search className="h-5 w-5" />
                 </Button>
               </div>
             </div>
-            
-            {/* Results Section */}
-            <div className="mt-4">
-              {searchMode === 'ai' && aiResponse && (
-                <Card className="mb-6 border-l-4 border-l-blue-500">
-                  <CardHeader className="flex flex-row items-center justify-between pb-2">
-                    <CardTitle className="text-md font-medium">AI Search Results</CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => setIsExpanded(!isExpanded)}
-                      className="h-8 w-8"
-                    >
-                      {isExpanded ? <Minimize className="h-4 w-4" /> : <Expand className="h-4 w-4" />}
-                    </Button>
-                  </CardHeader>
-                  <CardContent>
-                    <div className={cn(
-                      "text-sm whitespace-pre-line transition-all duration-300 ease-in-out",
-                      isExpanded ? "" : "max-h-[120px] overflow-hidden"
-                    )}>
-                      {aiResponse}
-                    </div>
-                    {!isExpanded && aiResponse.length > 120 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="mt-2 text-xs flex items-center text-blue-600 hover:text-blue-800" 
-                        onClick={() => setIsExpanded(true)}
-                      >
-                        Show more <ArrowRight className="ml-1 h-3 w-3" />
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
+
+            {/* AI Search Toggle Button */}
+            <Button
+              variant={searchMode === 'ai' ? "default" : "outline"}
+              className={cn(
+                "flex gap-2",
+                searchMode === 'ai' ? "bg-blue-600 text-white" : "bg-white text-gray-700"
               )}
-              
-              {searchMode === 'standard' && searchResults.length > 0 && (
-                <>
-                  <div className="text-sm text-muted-foreground mb-4">
-                    Showing 1-{searchResults.length} of {searchResults.length} results
-                  </div>
-                  <div className="space-y-4">
-                    {searchResults.map((result) => (
-                      <Card key={result.id} className="overflow-hidden hover:shadow-md transition-shadow">
-                        <CardContent className="p-0">
-                          <div className="p-4 border-l-4 border-blue-500">
-                            <div className="flex justify-between">
-                              <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">{result.id}</span>
-                              <span className="text-xs px-2 py-1 bg-green-100 text-green-800 rounded-full">Grant</span>
-                            </div>
-                            <h3 className="font-medium text-base mt-2">{result.title}</h3>
-                            <div className={cn(
-                              "text-muted-foreground text-sm mt-2",
-                              expandedResults.has(result.id) ? "" : "line-clamp-2"
-                            )}>
-                              {result.content}
-                            </div>
-                            {result.content.length > 50 && (
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="mt-2 h-6 text-xs text-blue-600 hover:text-blue-800 p-0" 
-                                onClick={() => toggleExpand(result.id)}
-                              >
-                                {expandedResults.has(result.id) ? "Show less" : "Show more"}
-                              </Button>
-                            )}
-                            <div className="flex justify-between items-center mt-3 text-xs text-muted-foreground">
-                              <span>Filed: 2022-06-15</span>
-                              <Button variant="outline" size="sm" className="h-7 text-xs">
-                                View Details
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </>
-              )}
-              
-              {((searchMode === 'ai' && !aiResponse) || (searchMode === 'standard' && searchResults.length === 0)) && 
-                searchQuery.trim() !== '' && (
-                  <div className="text-center p-10 bg-muted/30 rounded-lg">
-                    <Search className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
-                    <p className="text-muted-foreground">No results found for "{searchQuery}"</p>
-                  </div>
-                )}
-                
-              {searchQuery.trim() === '' && (
-                <div className="text-center p-12 bg-muted/30 rounded-lg">
-                  <Search className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
-                  <p className="text-lg text-muted-foreground">Enter a search query to begin</p>
-                  <p className="text-muted-foreground text-sm mt-2">
-                    Search by patent number, keyword, or inventor name
-                  </p>
-                </div>
-              )}
-            </div>
+              onClick={() => setSearchMode(searchMode === 'ai' ? 'standard' : 'ai')}
+            >
+              <div className="bg-blue-600 text-white p-1 rounded">
+                <Search className="h-4 w-4" />
+              </div>
+              AI Search
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Search By Dropdown */}
+          <div className="flex flex-wrap gap-4 items-center">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="flex gap-2 bg-white border-gray-300">
+                  <span>Search by</span>
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-56">
+                <DropdownMenuGroup>
+                  <DropdownMenuItem>Patent Number</DropdownMenuItem>
+                  <DropdownMenuItem>Title</DropdownMenuItem>
+                  <DropdownMenuItem>Abstract</DropdownMenuItem>
+                  <DropdownMenuItem>Inventor</DropdownMenuItem>
+                </DropdownMenuGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </div>
+
+      {/* AI Response Section */}
+      {searchMode === 'ai' && aiResponse && (
+        <Card className="mb-6 border-gray-200 bg-white">
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center mb-2">
+              <p className="font-medium text-gray-700">AI Search Results</p>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="h-8 w-8"
+              >
+                <Expand className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className={cn(
+              "text-sm text-gray-800 transition-all duration-300 ease-in-out",
+              isExpanded ? "max-h-full" : "max-h-20 overflow-hidden"
+            )}>
+              {aiResponse}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex flex-wrap gap-2 my-4 justify-center md:justify-start">
+        <Button 
+          variant="outline" 
+          className="border-blue-400 text-blue-600 hover:bg-blue-50"
+        >
+          <HelpCircle className="h-4 w-4 mr-1" />
+          Show Help
+        </Button>
+        <Button 
+          variant="outline"
+          className="border-blue-400 text-blue-600 hover:bg-blue-50"
+        >
+          <Save className="h-4 w-4 mr-1" />
+          Save Query
+        </Button>
+        <Button 
+          variant="outline"
+          className="border-blue-400 text-blue-600 hover:bg-blue-50"
+        >
+          Show My Saved Queries
+        </Button>
+        <Button 
+          variant="outline"
+          className="border-blue-400 text-blue-600 hover:bg-blue-50"
+        >
+          <FileSpreadsheet className="h-4 w-4 mr-1" />
+          Export To Excel
+        </Button>
+      </div>
+
+      {/* Filters Section */}
+      <div className="flex flex-wrap gap-3 mb-6 items-center">
+        <span className="font-medium text-gray-700">Filter By:</span>
+        
+        <div className="flex gap-2">
+          <Select value={filters.company} onValueChange={(value) => setFilters({...filters, company: value})}>
+            <SelectTrigger className="w-[180px] bg-white border-gray-300">
+              <SelectValue placeholder="All Microsoft" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="All Microsoft">All Microsoft</SelectItem>
+              <SelectItem value="Microsoft Corp">Microsoft Corp</SelectItem>
+              <SelectItem value="Microsoft Research">Microsoft Research</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={filters.startYear} onValueChange={(value) => setFilters({...filters, startYear: value})}>
+            <SelectTrigger className="w-[180px] bg-white border-gray-300">
+              <SelectValue placeholder="Filing Start Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2023">2023</SelectItem>
+              <SelectItem value="2022">2022</SelectItem>
+              <SelectItem value="2021">2021</SelectItem>
+              <SelectItem value="2020">2020</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select value={filters.endYear} onValueChange={(value) => setFilters({...filters, endYear: value})}>
+            <SelectTrigger className="w-[180px] bg-white border-gray-300">
+              <SelectValue placeholder="Filing End Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="2023">2023</SelectItem>
+              <SelectItem value="2022">2022</SelectItem>
+              <SelectItem value="2021">2021</SelectItem>
+              <SelectItem value="2020">2020</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Button 
+          variant="ghost" 
+          className="text-blue-600 hover:bg-blue-50 flex items-center"
+          onClick={clearFilters}
+        >
+          <X className="h-4 w-4 mr-1" />
+          Clear
+        </Button>
+      </div>
+
+      {/* Search Fields */}
+      <div className="flex flex-wrap gap-3 mb-6 items-center">
+        <span className="font-medium text-gray-700">Search By:</span>
+        
+        <div className="flex gap-4 items-center">
+          <label className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              checked={filters.searchFields.all}
+              onChange={() => toggleSearchField('all')} 
+              className="rounded text-blue-600"
+            />
+            All
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              checked={filters.searchFields.title}
+              onChange={() => toggleSearchField('title')} 
+              className="rounded text-blue-600"
+            />
+            Title
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              checked={filters.searchFields.abstract}
+              onChange={() => toggleSearchField('abstract')} 
+              className="rounded text-blue-600"
+            />
+            Abstract
+          </label>
+          
+          <label className="flex items-center gap-2">
+            <input 
+              type="checkbox" 
+              checked={filters.searchFields.claims}
+              onChange={() => toggleSearchField('claims')} 
+              className="rounded text-blue-600"
+            />
+            Claims (USPTO docs)
+          </label>
+        </div>
+      </div>
+
+      {/* Results Section */}
+      {searchResults.length > 0 && (
+        <div className="mt-6">
+          <div className="text-sm text-gray-600 mb-2">
+            Showing 1-{searchResults.length} of {searchResults.length} results
+          </div>
+          <div className="border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader className="bg-gray-50">
+                <TableRow>
+                  <TableHead className="font-medium">AOQ Ref #</TableHead>
+                  <TableHead className="font-medium">Title</TableHead>
+                  <TableHead className="font-medium">Status</TableHead>
+                  <TableHead className="font-medium">Filed</TableHead>
+                  <TableHead className="font-medium">Source</TableHead>
+                  <TableHead className="font-medium">URL</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {searchResults.map((result) => (
+                  <TableRow key={result.id} className="hover:bg-gray-50">
+                    <TableCell className="font-medium">{result.id}</TableCell>
+                    <TableCell className="max-w-md">{result.title}</TableCell>
+                    <TableCell>{result.status}</TableCell>
+                    <TableCell>{result.filed}</TableCell>
+                    <TableCell>{result.source}</TableCell>
+                    <TableCell>
+                      <a href={result.url} className="text-blue-600 hover:underline">Link</a>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
+
+      {/* Initial Empty State or No Results */}
+      {searchResults.length === 0 && searchMode !== 'ai' && searchQuery.trim() !== '' && (
+        <div className="text-center p-10 bg-gray-50 rounded-lg">
+          <Search className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+          <p className="text-gray-500">No results found for "{searchQuery}"</p>
+        </div>
+      )}
+      
+      {searchResults.length === 0 && searchQuery.trim() === '' && !aiResponse && (
+        <div className="text-center p-12 bg-gray-50 rounded-lg">
+          <Search className="mx-auto h-10 w-10 text-gray-400 mb-3" />
+          <p className="text-lg text-gray-500">Enter a search query to begin</p>
+          <p className="text-gray-500 text-sm mt-2">
+            Search by patent number, keyword, or inventor name
+          </p>
+        </div>
+      )}
     </div>
   );
 };
